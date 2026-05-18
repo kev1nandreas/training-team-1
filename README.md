@@ -34,6 +34,34 @@ securetask/
 - Node.js 18+
 - Git
 
+### 0. Setup environment variables
+
+Create .env file
+```bash
+cp .env.example .env
+```
+
+Set the JWT_SECRET
+```bash
+openssl rand -base64 32
+```
+
+Set the ADMIN_API_KEY
+```bash
+openssl rand -base64 32
+```
+
+Set the database credentials (only for local)
+```
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=taskuser_rotat3D
+DB_PASSWORD=taskpass123_rotat3D
+DB_NAME=securetask_N3w
+
+SERVER_PORT=8080
+```
+
 ### 1. Clone and Setup Database
 
 ```bash
@@ -41,9 +69,9 @@ securetask/
 docker-compose up -d
 
 # Database will be available at localhost:5432
-# Database: securetask
-# User: taskuser
-# Password: taskpass123
+# Database: securetask_N3w
+# User: taskuser_rotat3D
+# Password: taskpass123_rotat3D
 ```
 
 ### 2. Start Backend (Golang)
