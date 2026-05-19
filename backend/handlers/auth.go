@@ -8,10 +8,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+
+	"os"
 )
 
-// VULNERABILITY #4: Hardcoded JWT secret
-var jwtSecret = []byte("supersecret123")
+func getJWTSecret() []byte {
+    secret := os.Getenv("JWT_SECRET")
+    if secret == "" {
+        panic("JWT_SECRET not found in environment")
+    }
+    return []byte(secret)
+}
 
 type RegisterRequest struct {
 	Email    string `json:"email" binding:"required,email"`
@@ -76,7 +83,7 @@ func Login(c *gin.Context) {
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	tokenString, err := token.SignedString(jwtSecret)
+	tokenString, err := token.SignedString(getJWTSecret())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
@@ -104,7 +111,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil
+			return getJWTSecret(), nil
 		})
 
 		if err != nil || !token.Valid {

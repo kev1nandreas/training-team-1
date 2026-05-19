@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	"github.com/joho/godotenv"
 )
 
 // VULNERABILITY #4: Hardcoded credentials directly in source code
@@ -19,6 +21,11 @@ const (
 )
 
 func main() {
+	// Loads .env to program
+	if err := godotenv.Load("../.env"); err != nil {
+		log.Println("Warning: Could not load .env file", err)
+	}
+
 	// Initialize database
 	database.Connect()
 

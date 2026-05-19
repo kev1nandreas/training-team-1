@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -13,7 +14,7 @@ var DB *gorm.DB
 // VULNERABILITY #4: Hardcoded database credentials
 func Connect() {
 	// These credentials should come from environment variables!
-	dsn := "host=localhost user=taskuser password=taskpass123 dbname=securetask port=5432 sslmode=disable"
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT"))
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
