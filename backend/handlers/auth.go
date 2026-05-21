@@ -172,7 +172,7 @@ func Register(c *gin.Context) {
 	user := models.User{
 		Email:    req.Email,
 		Password: hashedPassword,
-		Name:     req.Name,
+		Name:     sanitizeHTML(req.Name),
 		Role:     "user",
 	}
 
