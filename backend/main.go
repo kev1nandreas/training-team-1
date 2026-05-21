@@ -8,17 +8,16 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-)
 
-// VULNERABILITY #4: Hardcoded credentials directly in source code
-const (
-	// These should NEVER be hardcoded in production!
-	DB_CONNECTION = "host=localhost user=taskuser password=taskpass123 dbname=securetask port=5432 sslmode=disable"
-	JWT_SECRET    = "supersecret123"  // VULNERABILITY: Weak, hardcoded JWT secret
-	ADMIN_KEY     = "admin-key-12345" // VULNERABILITY: Hardcoded API key
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Loads .env to program
+	if err := godotenv.Load("../.env"); err != nil {
+		log.Println("Warning: Could not load .env file", err)
+	}
+
 	// Initialize database
 	database.Connect()
 
@@ -48,12 +47,8 @@ func main() {
 	r.POST("/api/auth/login", handlers.Login)
 
 	// VULNERABILITY #2: No authentication middleware on these routes!
-	r.GET("/api/tasks/search", handlers.SearchTasks)        // Should require auth
-	r.DELETE("/api/tasks/:id", handlers.DeleteTask)         // Should require auth
-	r.PUT("/api/users/:id/profile", handlers.UpdateProfile) // Should require auth
-
-	// VULNERABILITY #2: Admin route with no authorization check
-	r.GET("/api/admin/users", handlers.GetAllUsers) // Anyone can access!
+	r.GET("/api/tasks/search", handlers.SearchTasks) // Should require auth
+	r.DELETE("/api/tasks/:id", handlers.DeleteTask)  // Should require auth
 
 	// Protected routes (with auth middleware)
 	authorized := r.Group("/api")
@@ -63,6 +58,8 @@ func main() {
 		authorized.POST("/tasks", handlers.CreateTask)
 		authorized.PUT("/tasks/:id", handlers.UpdateTask)
 		authorized.GET("/users/me", handlers.GetCurrentUser)
+		authorized.PUT("/users/:id/profile", handlers.UpdateProfile)
+		authorized.GET("/admin/users", handlers.GetAllUsers)
 	}
 
 	log.Println("🚀 Server starting on port 8080...")
@@ -82,14 +79,14 @@ func seedData() {
 	users := []models.User{
 		{
 			Email:    "admin@example.com",
-			Password: "admin123", // Plain text password!
+			Password: hashPasswordOrPanic("admin123"), // Plain text password!
 			Name:     "Admin User",
 			Role:     "admin",
 			Bio:      "I'm the administrator",
 		},
 		{
 			Email:    "user@example.com",
-			Password: "password123", // Plain text password!
+			Password: hashPasswordOrPanic("password123"), // Plain text password!
 			Name:     "Regular User",
 			Role:     "user",
 			Bio:      "Just a regular user",
@@ -101,4 +98,12 @@ func seedData() {
 	}
 
 	log.Println("✅ Database seeded with initial users")
+}
+
+func hashPasswordOrPanic(password string) string {
+	hashed, err := handlers.HashPassword(password)
+	if err != nil {
+		panic(err)
+	}
+	return hashed
 }

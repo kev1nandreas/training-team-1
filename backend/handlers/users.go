@@ -1,12 +1,19 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"securetask/database"
 	"securetask/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/microcosm-cc/bluemonday"
 )
+
+func sanitizeHTML(input string) string {
+	p := bluemonday.StrictPolicy()
+	return p.Sanitize(input)
+}
 
 func GetCurrentUser(c *gin.Context) {
 	userID := c.GetUint("user_id")
@@ -17,14 +24,12 @@ func GetCurrentUser(c *gin.Context) {
 		return
 	}
 
-	// VULNERABILITY #2: Returning password in response
 	c.JSON(http.StatusOK, user)
 }
 
-// VULNERABILITY #2: No authentication required (exposed publicly in main.go)
-// VULNERABILITY #2: No authorization check - can update any user's profile
 func UpdateProfile(c *gin.Context) {
-	userID := c.Param("id")
+	userID := fmt.Sprintf("%d", c.GetUint("user_id")) // From AuthMiddleware
+	paramID := c.Param("id")
 
 	var updates map[string]interface{}
 	if err := c.ShouldBindJSON(&updates); err != nil {
@@ -32,10 +37,15 @@ func UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	// VULNERABILITY #2: Anyone can update anyone's profile!
-	// No check if the authenticated user matches the profile being updated
+	if userID != paramID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot update other users' profiles"})
+		return
+	}
 
-	// VULNERABILITY #3: Bio field not sanitized - XSS vulnerability
+	if bio, ok := updates["bio"].(string); ok {
+		updates["bio"] = sanitizeHTML(bio)
+	}
+
 	var user models.User
 	if err := database.DB.First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
@@ -47,15 +57,24 @@ func UpdateProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-// VULNERABILITY #2: No authentication required (exposed publicly in main.go)
-// VULNERABILITY #2: No authorization check - anyone can access admin endpoint
 func GetAllUsers(c *gin.Context) {
-	// Should check if user has admin role, but doesn't!
+	// Check if user has admin role
+	role := c.GetString("role")
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		return
+	}
+
+	// Check admin API key header
+	adminKey := c.GetHeader("X-Admin-Key")
+	if adminKey != getAdminAPIKey() {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid admin API key"})
+		return
+	}
 
 	var users []models.User
 	database.DB.Find(&users)
 
-	// VULNERABILITY #2: Returning all users with passwords!
 	c.JSON(http.StatusOK, gin.H{
 		"users": users,
 		"count": len(users),
