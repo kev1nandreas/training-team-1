@@ -120,7 +120,7 @@ fi
 
 # Negative: accessing admin endpoint as regular user with admin key
 
-adminKey='check the .env'
+adminKey='yUM6Jk+DjsByT9OCHqRemSw+fqRfadR/MGI/Vd40Gtg='
 
 res=$(curl -X GET -sS \
     -H "$content_type_header" \
@@ -347,4 +347,32 @@ if [[ -n "$message" && "$message" != "null" ]]; then
   echo "TEST $test_count: ❌ FAIL - New user can register with invalid email and weak password"
 elif  [[ -n "$err" && "$err" != "null" ]]; then
   echo "TEST $test_count: ✅ PASS - New user cannot register with invalid email and weak password"
+fi
+
+((++test_count))
+
+# Negative: try to login with invalid credentials more than 5 times
+
+non_existing_user_body='{"email": "test1234@example.com","password": "arbitrary password"}'
+
+for i in {1..5}; do
+  res=$(curl -X POST -sS \
+    -H "$content_type_header" \
+    -d "$non_existing_user_body" \
+    -w '\n%{http_code}' \
+    --location "$base_url/auth/login")
+done
+
+res=$(curl -X POST -sS \
+    -H "$content_type_header" \
+    -d "$non_existing_user_body" \
+    -w '\n%{http_code}' \
+    --location "$base_url/auth/login")
+
+http_code=$(echo "$res" | tail -n1)
+
+if [[ "$http_code" == "429" ]]; then
+  echo "TEST $test_count: ✅ PASS - Rate limiting works"
+else 
+  echo "TEST $test_count: ❌ FAIL - Rate limiting does not work"
 fi
