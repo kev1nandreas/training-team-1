@@ -108,7 +108,7 @@ res=$(curl -X GET -sS \
     -H "Authorization: Bearer $token")
 
 err=$(echo "$res" | jq -r '.error')
-users=$(echo "$users" | jq -r '.users')
+users=$(echo "$res" | jq -r '.users')
 
 if [[ -n "$err" && "$err" != "null" ]]; then
   echo "TEST $test_count: ✅ PASS - Regular user cannot access admin endpoint"
@@ -131,7 +131,7 @@ res=$(curl -X GET -sS \
 echo $res
 
 err=$(echo "$res" | jq -r '.error')
-users=$(echo "$users" | jq -r '.users')
+users=$(echo "$res" | jq -r '.users')
 
 if [[ -n "$err" && "$err" != "null" ]]; then
   echo "TEST $test_count: ✅ PASS - Regular user cannot access admin endpoint even with admin key"
@@ -230,7 +230,7 @@ res=$(curl -X GET -sS \
     -H "$auth_header $adminToken")
 
 err=$(echo "$res" | jq -r '.error')
-users=$(echo "$users" | jq -r '.users')
+users=$(echo "$res" | jq -r '.users')
 
 if [[ -n "$err" && "$err" != "null" ]]; then
   echo "TEST $test_count: ✅ PASS - Admin cannot access all users without admin key"
