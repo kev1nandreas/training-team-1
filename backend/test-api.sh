@@ -1,4 +1,5 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
+# Requires zsh
 
 set -e
 
@@ -120,7 +121,7 @@ fi
 
 # Negative: accessing admin endpoint as regular user with admin key
 
-adminKey='yUM6Jk+DjsByT9OCHqRemSw+fqRfadR/MGI/Vd40Gtg='
+adminKey=''
 
 res=$(curl -X GET -sS \
     -H "$content_type_header" \
