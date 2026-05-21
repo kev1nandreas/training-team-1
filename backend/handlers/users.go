@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"securetask/database"
 	"securetask/models"
@@ -27,7 +28,7 @@ func GetCurrentUser(c *gin.Context) {
 }
 
 func UpdateProfile(c *gin.Context) {
-	userID := c.GetString("user_id") // From AuthMiddleware
+	userID := fmt.Sprintf("%d", c.GetUint("user_id")) // From AuthMiddleware
 	paramID := c.Param("id")
 
 	var updates map[string]interface{}

@@ -114,10 +114,17 @@ func validateEmail(email string) error {
 	if err != nil || !matched {
 		return fmt.Errorf("email must be a valid email format")
 	}
+
+	// Check for duplicate email
+	var user models.User
+	if err := database.DB.Where("email = ?", email).First(&user).Error; err == nil {
+		return fmt.Errorf("email already exists")
+	}
+
 	return nil
 }
 
-func hashPassword(password string) (string, error) {
+func HashPassword(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", fmt.Errorf("failed to hash password")
@@ -156,7 +163,7 @@ func Register(c *gin.Context) {
 	}
 
 	// Hash password using bcrypt
-	hashedPassword, err := hashPassword(req.Password)
+	hashedPassword, err := HashPassword(req.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process password"})
 		return

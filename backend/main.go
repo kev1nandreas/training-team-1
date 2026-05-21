@@ -12,14 +12,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// VULNERABILITY #4: Hardcoded credentials directly in source code
-const (
-	// These should NEVER be hardcoded in production!
-	DB_CONNECTION = "host=localhost user=taskuser password=taskpass123 dbname=securetask port=5432 sslmode=disable"
-	JWT_SECRET    = "supersecret123"  // VULNERABILITY: Weak, hardcoded JWT secret
-	ADMIN_KEY     = "admin-key-12345" // VULNERABILITY: Hardcoded API key
-)
-
 func main() {
 	// Loads .env to program
 	if err := godotenv.Load("../.env"); err != nil {
@@ -87,14 +79,14 @@ func seedData() {
 	users := []models.User{
 		{
 			Email:    "admin@example.com",
-			Password: "admin123", // Plain text password!
+			Password: hashPasswordOrPanic("admin123"), // Plain text password!
 			Name:     "Admin User",
 			Role:     "admin",
 			Bio:      "I'm the administrator",
 		},
 		{
 			Email:    "user@example.com",
-			Password: "password123", // Plain text password!
+			Password: hashPasswordOrPanic("password123"), // Plain text password!
 			Name:     "Regular User",
 			Role:     "user",
 			Bio:      "Just a regular user",
@@ -106,4 +98,12 @@ func seedData() {
 	}
 
 	log.Println("✅ Database seeded with initial users")
+}
+
+func hashPasswordOrPanic(password string) string {
+	hashed, err := handlers.HashPassword(password)
+	if err != nil {
+		panic(err)
+	}
+	return hashed
 }
