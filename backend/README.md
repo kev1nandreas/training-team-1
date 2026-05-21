@@ -64,3 +64,12 @@ This backend contains the following intentional vulnerabilities:
 - **Framework**: Gin
 - **Database**: PostgreSQL with GORM
 - **Authentication**: JWT (with vulnerabilities)
+
+
+## Testing
+
+Update your newly created credential in test-api.sh and run it
+
+```bash
+backend/test-api.sh
+```
