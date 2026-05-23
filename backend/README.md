@@ -68,8 +68,15 @@ This backend contains the following intentional vulnerabilities:
 
 ## Testing
 
-Update your newly created credential in test-api.sh and run it
+The `test-api.sh` depends on the following command
+- `curl`
+- `jq`
+
+Before running, make sure that you put the correct admin key credential
+
+Run the script with:
 
 ```bash
+chmod +x backend/test-api.sh
 backend/test-api.sh
 ```

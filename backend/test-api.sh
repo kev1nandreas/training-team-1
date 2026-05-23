@@ -1,4 +1,5 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
+# Requires zsh
 
 set -e
 
@@ -108,7 +109,7 @@ res=$(curl -X GET -sS \
     -H "Authorization: Bearer $token")
 
 err=$(echo "$res" | jq -r '.error')
-users=$(echo "$users" | jq -r '.users')
+users=$(echo "$res" | jq -r '.users')
 
 if [[ -n "$err" && "$err" != "null" ]]; then
   echo "TEST $test_count: ✅ PASS - Regular user cannot access admin endpoint"
@@ -120,7 +121,7 @@ fi
 
 # Negative: accessing admin endpoint as regular user with admin key
 
-adminKey='check the .env'
+adminKey=''
 
 res=$(curl -X GET -sS \
     -H "$content_type_header" \
@@ -131,7 +132,7 @@ res=$(curl -X GET -sS \
 echo $res
 
 err=$(echo "$res" | jq -r '.error')
-users=$(echo "$users" | jq -r '.users')
+users=$(echo "$res" | jq -r '.users')
 
 if [[ -n "$err" && "$err" != "null" ]]; then
   echo "TEST $test_count: ✅ PASS - Regular user cannot access admin endpoint even with admin key"
@@ -230,7 +231,7 @@ res=$(curl -X GET -sS \
     -H "$auth_header $adminToken")
 
 err=$(echo "$res" | jq -r '.error')
-users=$(echo "$users" | jq -r '.users')
+users=$(echo "$res" | jq -r '.users')
 
 if [[ -n "$err" && "$err" != "null" ]]; then
   echo "TEST $test_count: ✅ PASS - Admin cannot access all users without admin key"
@@ -347,4 +348,32 @@ if [[ -n "$message" && "$message" != "null" ]]; then
   echo "TEST $test_count: ❌ FAIL - New user can register with invalid email and weak password"
 elif  [[ -n "$err" && "$err" != "null" ]]; then
   echo "TEST $test_count: ✅ PASS - New user cannot register with invalid email and weak password"
+fi
+
+((++test_count))
+
+# Negative: try to login with invalid credentials more than 5 times
+
+non_existing_user_body='{"email": "test1234@example.com","password": "arbitrary password"}'
+
+for i in {1..5}; do
+  res=$(curl -X POST -sS \
+    -H "$content_type_header" \
+    -d "$non_existing_user_body" \
+    -w '\n%{http_code}' \
+    --location "$base_url/auth/login")
+done
+
+res=$(curl -X POST -sS \
+    -H "$content_type_header" \
+    -d "$non_existing_user_body" \
+    -w '\n%{http_code}' \
+    --location "$base_url/auth/login")
+
+http_code=$(echo "$res" | tail -n1)
+
+if [[ "$http_code" == "429" ]]; then
+  echo "TEST $test_count: ✅ PASS - Rate limiting works"
+else 
+  echo "TEST $test_count: ❌ FAIL - Rate limiting does not work"
 fi
