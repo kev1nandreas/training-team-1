@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { updateProfile } from '../services/api';
 import withAuth from '../hoc/withAuth';
 import useAuthStore from '../store/authStore';
+import { profileSchema } from '../validation/schemas';
 
 function Profile() {
   const { user, login } = useAuthStore();
@@ -11,26 +12,33 @@ function Profile() {
     name: user?.name || '',
     bio: user?.bio || ''
   });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFieldErrors({ ...fieldErrors, [e.target.name]: undefined });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
+    setFieldErrors({});
+
+    const result = profileSchema.safeParse(formData);
+    if (!result.success) {
+      const errors = {};
+      for (const issue of result.error.issues) {
+        errors[issue.path[0]] = issue.message;
+      }
+      setFieldErrors(errors);
+      return;
+    }
 
     try {
-      // VULNERABILITY #2: No authorization check - can update any user's profile
-      const response = await updateProfile(user.id, formData);
-      
+      const response = await updateProfile(user.id, result.data);
       login(token, response.data);
-      
       setMessage('Profile updated successfully!');
     } catch (error) {
       setMessage('Failed to update profile');
@@ -90,24 +98,25 @@ function Profile() {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                required
+                className={`w-full px-4 py-2 border rounded focus:outline-none focus:border-blue-500 ${fieldErrors.name ? 'border-red-400' : 'border-gray-300'}`}
               />
+              {fieldErrors.name && <p className="text-red-600 text-xs mt-1">{fieldErrors.name}</p>}
             </div>
 
             <div>
               <label className="block text-gray-700 font-semibold mb-2">
                 Bio
               </label>
-              {/* VULNERABILITY #3: No sanitization - XSS possible in bio field */}
               <textarea
                 name="bio"
                 value={formData.bio}
                 onChange={handleChange}
-                placeholder="Tell us about yourself... (Try: <img src=x onerror=alert('XSS')>)"
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                placeholder="Tell us about yourself..."
+                className={`w-full px-4 py-2 border rounded focus:outline-none focus:border-blue-500 ${fieldErrors.bio ? 'border-red-400' : 'border-gray-300'}`}
                 rows="4"
               />
+              {fieldErrors.bio && <p className="text-red-600 text-xs mt-1">{fieldErrors.bio}</p>}
+              <p className="text-gray-500 text-xs mt-1">{formData.bio?.length || 0}/500</p>
             </div>
 
             <button

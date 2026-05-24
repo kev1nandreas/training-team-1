@@ -3,12 +3,15 @@ import { useNavigate, Link } from 'react-router-dom';
 import { getTasks, createTask, updateTask, deleteTask, searchTasks } from '../services/api';
 import withAuth from '../hoc/withAuth';
 import useAuthStore from '../store/authStore';
+import { taskSchema, searchSchema } from '../validation/schemas';
 
 function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [searchResults, setSearchResults] = useState(null);
   const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium' });
+  const [taskErrors, setTaskErrors] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchError, setSearchError] = useState('');
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
@@ -27,8 +30,20 @@ function Dashboard() {
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
+    setTaskErrors({});
+
+    const result = taskSchema.safeParse(newTask);
+    if (!result.success) {
+      const errors = {};
+      for (const issue of result.error.issues) {
+        errors[issue.path[0]] = issue.message;
+      }
+      setTaskErrors(errors);
+      return;
+    }
+
     try {
-      await createTask(newTask);
+      await createTask(result.data);
       setNewTask({ title: '', description: '', priority: 'medium' });
       loadTasks();
     } catch (error) {
@@ -45,15 +60,22 @@ function Dashboard() {
     }
   };
 
-  // VULNERABILITY #1: No sanitization before sending search query (SQL Injection on backend)
   const handleSearch = async (e) => {
     e.preventDefault();
+    setSearchError('');
+
+    const result = searchSchema.safeParse({ query: searchTerm });
+    if (!result.success) {
+      setSearchError(result.error.issues[0].message);
+      return;
+    }
+
     try {
-      const response = await searchTasks(searchTerm);
+      const response = await searchTasks(result.data.query);
       setSearchResults(response.data);
     } catch (error) {
       console.error('Search failed:', error);
-      alert('Search failed: ' + (error.response?.data?.error || 'Unknown error'));
+      setSearchError('Search failed. Please try again.');
     }
   };
 
@@ -101,13 +123,16 @@ function Dashboard() {
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">Search Tasks</h2>
           <form onSubmit={handleSearch} className="flex gap-2">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search tasks... (Try: ' OR '1'='1)"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-            />
+            <div className="flex-1">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setSearchError(''); }}
+                placeholder="Search tasks..."
+                className={`w-full px-4 py-2 border rounded focus:outline-none focus:border-blue-500 ${searchError ? 'border-red-400' : 'border-gray-300'}`}
+              />
+              {searchError && <p className="text-red-600 text-xs mt-1">{searchError}</p>}
+            </div>
             <button
               type="submit"
               className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
@@ -140,21 +165,21 @@ function Dashboard() {
               <input
                 type="text"
                 value={newTask.title}
-                onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                onChange={(e) => { setNewTask({ ...newTask, title: e.target.value }); setTaskErrors((te) => ({ ...te, title: undefined })); }}
                 placeholder="Task title"
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                required
+                className={`w-full px-4 py-2 border rounded focus:outline-none focus:border-blue-500 ${taskErrors.title ? 'border-red-400' : 'border-gray-300'}`}
               />
+              {taskErrors.title && <p className="text-red-600 text-xs mt-1">{taskErrors.title}</p>}
             </div>
             <div>
-              {/* VULNERABILITY #3: No sanitization - XSS possible */}
               <textarea
                 value={newTask.description}
-                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                placeholder="Task description (Try: <script>alert('XSS')</script>)"
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                onChange={(e) => { setNewTask({ ...newTask, description: e.target.value }); setTaskErrors((te) => ({ ...te, description: undefined })); }}
+                placeholder="Task description"
+                className={`w-full px-4 py-2 border rounded focus:outline-none focus:border-blue-500 ${taskErrors.description ? 'border-red-400' : 'border-gray-300'}`}
                 rows="3"
               />
+              {taskErrors.description && <p className="text-red-600 text-xs mt-1">{taskErrors.description}</p>}
             </div>
             <div className="flex gap-4 items-center">
               <select
