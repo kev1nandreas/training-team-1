@@ -122,8 +122,7 @@ function Profile() {
           {user?.bio && (
             <div className="mt-6 p-4 bg-gray-50 rounded">
               <h3 className="font-semibold mb-2">Current Bio:</h3>
-              {/* VULNERABILITY #3: Rendering unsanitized HTML */}
-              <div dangerouslySetInnerHTML={{ __html: user.bio }} />
+              <div>{user.bio}</div>
             </div>
           )}
         </div>
