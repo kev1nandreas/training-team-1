@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { API_BASE_URL, ADMIN_API_KEY } from '../config';
+import env from '../env/env';
 import { getToken } from '../utils/cookies';
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: env.API_BASE_URL,
 });
 
 // VULNERABILITY: Logging sensitive data
@@ -79,7 +79,7 @@ export const updateProfile = (userId, profileData) => {
 export const getAllUsers = () => {
   return api.get('/admin/users', {
     headers: {
-      'X-Admin-Key': ADMIN_API_KEY  // Hardcoded admin key!
+      'X-Admin-Key': env.ADMIN_API_KEY
     }
   });
 };
