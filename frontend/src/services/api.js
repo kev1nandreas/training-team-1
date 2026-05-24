@@ -14,11 +14,6 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // VULNERABILITY: Logging requests with sensitive data
-    if (console && console.log) {
-      console.log('API Request:', config.method, config.url, config.data);
-    }
-    
     return config;
   },
   (error) => {
@@ -30,7 +25,6 @@ api.interceptors.request.use(
 // VULNERABILITY: Logging sensitive response data
 api.interceptors.response.use(
   (response) => {
-    console.log('API Response:', response.data);
     return response;
   },
   (error) => {
