@@ -9,34 +9,22 @@ import useAuthStore from './store/authStore';
 function App() {
   const { isAuthed } = useAuthStore();
 
-  // VULNERABILITY: No CSP (Content Security Policy) headers
-  // VULNERABILITY: No protection against clickjacking
-
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
         <Routes>
           <Route
             path="/login"
-            element={isAuthed ? <Navigate to="/dashboard" /> : <Login />}
+            element={isAuthed ? <Navigate to="/dashboard" replace /> : <Login />}
           />
           <Route
             path="/register"
-            element={isAuthed ? <Navigate to="/dashboard" /> : <Register />}
+            element={isAuthed ? <Navigate to="/dashboard" replace /> : <Register />}
           />
-          <Route
-            path="/dashboard"
-            element={isAuthed ? <Dashboard /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="/profile"
-            element={isAuthed ? <Profile /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="/admin"
-            element={isAuthed ? <AdminPanel /> : <Navigate to="/login" />}
-          />
-          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
     </Router>

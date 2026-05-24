@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { getTasks, createTask, updateTask, deleteTask, searchTasks } from '../services/api';
 import { getUserData, clearUserData } from '../utils/storage';
 import { removeToken } from '../utils/cookies';
+import withAuth from '../hoc/withAuth';
 
 function Dashboard() {
   const [tasks, setTasks] = useState([]);
@@ -229,4 +230,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard;
+export default withAuth(Dashboard);

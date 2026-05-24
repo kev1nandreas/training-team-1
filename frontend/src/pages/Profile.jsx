@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile } from '../services/api';
 import { getUserData, setUserData } from '../utils/storage';
+import withAuth from '../hoc/withAuth';
 
 function Profile() {
   const [user, setUser] = useState(null);
@@ -151,4 +152,4 @@ function Profile() {
   );
 }
 
-export default Profile;
+export default withAuth(Profile);

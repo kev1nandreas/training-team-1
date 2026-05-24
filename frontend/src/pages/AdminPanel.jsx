@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllUsers } from '../services/api';
 import { getUserData } from '../utils/storage';
+import withAuth from '../hoc/withAuth';
 
 function AdminPanel() {
   const [users, setUsers] = useState([]);
@@ -12,13 +13,6 @@ function AdminPanel() {
   useEffect(() => {
     const userData = getUserData();
     setUser(userData);
-    
-    // VULNERABILITY #2: Client-side authorization check only
-    // User can bypass this by modifying localStorage
-    if (userData?.role !== 'admin') {
-      // Should redirect, but let's allow it for training purposes
-      console.warn('Non-admin user accessing admin panel!');
-    }
     
     loadUsers();
   }, []);
@@ -134,4 +128,4 @@ function AdminPanel() {
   );
 }
 
-export default AdminPanel;
+export default withAuth(AdminPanel, { roles: ['admin'] });
