@@ -74,9 +74,6 @@ function AdminPanel() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Password
-                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -99,10 +96,6 @@ function AdminPanel() {
                       }`}>
                         {u.role}
                       </span>
-                    </td>
-                    {/* VULNERABILITY #2 & #5: Displaying plain text passwords from API */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-mono">
-                      {u.password || 'N/A'}
                     </td>
                   </tr>
                 ))}
