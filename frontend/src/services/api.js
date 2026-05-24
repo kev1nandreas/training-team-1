@@ -55,10 +55,10 @@ export const deleteTask = (id) => {
   return api.delete(`/tasks/${id}`);
 };
 
-// VULNERABILITY #1: No input sanitization before sending to backend
 export const searchTasks = (searchTerm) => {
-  // This will be vulnerable to SQL injection on the backend
-  return api.get(`/tasks/search?q=${searchTerm}`);
+  return api.get(`/tasks/search`, {
+    params: { q: searchTerm }
+  });
 };
 
 // User APIs

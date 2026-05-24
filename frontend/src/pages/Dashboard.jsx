@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getTasks, createTask, updateTask, deleteTask, searchTasks } from '../services/api';
+import { getTasks, createTask, deleteTask, searchTasks } from '../services/api';
 import withAuth from '../hoc/withAuth';
 import useAuthStore from '../store/authStore';
 import { taskSchema, searchSchema } from '../validation/schemas';
+import TaskSearchResults from '../components/TaskSearchResults';
 
 function Dashboard() {
   const [tasks, setTasks] = useState([]);
@@ -142,18 +143,7 @@ function Dashboard() {
           </form>
           
           {searchResults && (
-            <div className="mt-4 p-4 bg-gray-50 rounded">
-              <h3 className="font-semibold mb-2">Search Results:</h3>
-              <pre className="text-sm overflow-auto">
-                {JSON.stringify(searchResults, null, 2)}
-              </pre>
-              <button
-                onClick={() => setSearchResults(null)}
-                className="mt-2 text-blue-500 hover:underline text-sm"
-              >
-                Clear Results
-              </button>
-            </div>
+            <TaskSearchResults results={searchResults} onClear={() => setSearchResults(null)} />
           )}
         </div>
 
