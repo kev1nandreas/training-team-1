@@ -6,7 +6,6 @@ const api = axios.create({
   baseURL: env.API_BASE_URL,
 });
 
-// VULNERABILITY: Logging sensitive data
 api.interceptors.request.use(
   (config) => {
     const token = getToken();
@@ -17,18 +16,15 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('Request Error:', error);
     return Promise.reject(error);
   }
 );
 
-// VULNERABILITY: Logging sensitive response data
 api.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
-    console.error('Response Error:', error.response?.data);
     return Promise.reject(error);
   }
 );

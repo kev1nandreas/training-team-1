@@ -35,8 +35,7 @@ function Register() {
         navigate('/login');
       }, 2000);
     } catch (err) {
-      // VULNERABILITY: Exposing detailed error information
-      setError(err.response?.data?.error || 'Registration failed');
+      setError('Registration failed');
       console.error('Registration error:', err);
     }
   };
