@@ -1,41 +1,39 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { login } from '../services/api';
-import { setToken, setUserData, saveDebugInfo } from '../utils/storage';
+import { login as loginApi } from '../services/api';
+import useAuthStore from '../store/authStore';
+import { loginSchema } from '../validation/schemas';
 
-function Login({ setAuth }) {
+function Login() {
+  const { login } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
+
+    const result = loginSchema.safeParse({ email, password });
+    if (!result.success) {
+      const errors = {};
+      for (const issue of result.error.issues) {
+        errors[issue.path[0]] = issue.message;
+      }
+      setFieldErrors(errors);
+      return;
+    }
 
     try {
-      const response = await login(email, password);
-      
-      // VULNERABILITY #5: Storing token in localStorage (vulnerable to XSS)
-      setToken(response.data.token);
-      
-      // VULNERABILITY #5: Storing full user object including password
-      setUserData(response.data.user);
-      
-      // VULNERABILITY: Storing sensitive debug info
-      saveDebugInfo({
-        action: 'login',
-        email: email,
-        timestamp: new Date(),
-        userAgent: navigator.userAgent
-      });
-
-      setAuth(true);
+      const response = await loginApi(result.data.email, result.data.password);
+      login(response.data.token, response.data.user);
       navigate('/dashboard');
     } catch (err) {
-      // VULNERABILITY: Exposing detailed error messages
-      setError(err.response?.data?.error || 'Login failed');
-      console.error('Login error:', err.response?.data);
+      setError('Login failed. Please check your credentials.');
+      console.error('Login error');
     }
   };
 
@@ -63,10 +61,10 @@ function Login({ setAuth }) {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-              required
+              onChange={(e) => { setEmail(e.target.value); setFieldErrors((fe) => ({ ...fe, email: undefined })); }}
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500 ${fieldErrors.email ? 'border-red-400' : 'border-gray-300'}`}
             />
+            {fieldErrors.email && <p className="text-red-600 text-xs mt-1">{fieldErrors.email}</p>}
           </div>
 
           <div className="mb-6">
@@ -76,10 +74,10 @@ function Login({ setAuth }) {
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-              required
+              onChange={(e) => { setPassword(e.target.value); setFieldErrors((fe) => ({ ...fe, password: undefined })); }}
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500 ${fieldErrors.password ? 'border-red-400' : 'border-gray-300'}`}
             />
+            {fieldErrors.password && <p className="text-red-600 text-xs mt-1">{fieldErrors.password}</p>}
           </div>
 
           <button

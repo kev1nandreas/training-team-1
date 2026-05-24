@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../services/api';
+import { registerSchema } from '../validation/schemas';
 
 function Register() {
   const [formData, setFormData] = useState({
@@ -8,6 +9,7 @@ function Register() {
     email: '',
     password: ''
   });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
@@ -17,26 +19,34 @@ function Register() {
       ...formData,
       [e.target.name]: e.target.value
     });
+    setFieldErrors({ ...fieldErrors, [e.target.name]: undefined });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setFieldErrors({});
 
-    // VULNERABILITY #2: No client-side password validation
-    // No minimum length, complexity requirements, etc.
+    const result = registerSchema.safeParse(formData);
+    if (!result.success) {
+      const errors = {};
+      for (const issue of result.error.issues) {
+        errors[issue.path[0]] = issue.message;
+      }
+      setFieldErrors(errors);
+      return;
+    }
 
     try {
-      await register(formData.email, formData.password, formData.name);
+      await register(result.data.email, result.data.password, result.data.name);
       setSuccess('Registration successful! Redirecting to login...');
-      
+
       setTimeout(() => {
         navigate('/login');
       }, 2000);
     } catch (err) {
-      // VULNERABILITY: Exposing detailed error information
-      setError(err.response?.data?.error || 'Registration failed');
+      setError('Registration failed');
       console.error('Registration error:', err);
     }
   };
@@ -73,9 +83,9 @@ function Register() {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-              required
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500 ${fieldErrors.name ? 'border-red-400' : 'border-gray-300'}`}
             />
+            {fieldErrors.name && <p className="text-red-600 text-xs mt-1">{fieldErrors.name}</p>}
           </div>
 
           <div className="mb-4">
@@ -87,9 +97,9 @@ function Register() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-              required
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500 ${fieldErrors.email ? 'border-red-400' : 'border-gray-300'}`}
             />
+            {fieldErrors.email && <p className="text-red-600 text-xs mt-1">{fieldErrors.email}</p>}
           </div>
 
           <div className="mb-6">
@@ -101,10 +111,10 @@ function Register() {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-              required
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500 ${fieldErrors.password ? 'border-red-400' : 'border-gray-300'}`}
             />
-            {/* VULNERABILITY #2: No password strength indicator or requirements */}
+            {fieldErrors.password && <p className="text-red-600 text-xs mt-1">{fieldErrors.password}</p>}
+            <p className="text-gray-500 text-xs mt-1">Min 16 chars, one uppercase letter, one lowercase letter, one symbol.</p>
           </div>
 
           <button

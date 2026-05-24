@@ -1,25 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllUsers } from '../services/api';
-import { getUserData } from '../utils/storage';
+import withAuth from '../hoc/withAuth';
+import useAuthStore from '../store/authStore';
 
 function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
-  const [user, setUser] = useState(null);
+  const { user } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userData = getUserData();
-    setUser(userData);
-    
-    // VULNERABILITY #2: Client-side authorization check only
-    // User can bypass this by modifying localStorage
-    if (userData?.role !== 'admin') {
-      // Should redirect, but let's allow it for training purposes
-      console.warn('Non-admin user accessing admin panel!');
-    }
-    
     loadUsers();
   }, []);
 
@@ -83,9 +74,6 @@ function AdminPanel() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Password
-                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -109,10 +97,6 @@ function AdminPanel() {
                         {u.role}
                       </span>
                     </td>
-                    {/* VULNERABILITY #2 & #5: Displaying plain text passwords from API */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-mono">
-                      {u.password || 'N/A'}
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -134,4 +118,4 @@ function AdminPanel() {
   );
 }
 
-export default AdminPanel;
+export default withAuth(AdminPanel, { roles: ['admin'] });

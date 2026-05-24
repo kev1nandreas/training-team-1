@@ -1,55 +1,30 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
-import { getToken, getUserData } from './utils/storage';
+import useAuthStore from './store/authStore';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    // Check if user is authenticated
-    const token = getToken();
-    const user = getUserData();
-    
-    // VULNERABILITY: Weak authentication check
-    // Only checks if token exists, doesn't validate it
-    if (token && user) {
-      setIsAuthenticated(true);
-    }
-  }, []);
-
-  // VULNERABILITY: No CSP (Content Security Policy) headers
-  // VULNERABILITY: No protection against clickjacking
+  const { isAuthed } = useAuthStore();
 
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
         <Routes>
-          <Route 
-            path="/login" 
-            element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login setAuth={setIsAuthenticated} />} 
+          <Route
+            path="/login"
+            element={isAuthed ? <Navigate to="/dashboard" replace /> : <Login />}
           />
-          <Route 
-            path="/register" 
-            element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} 
+          <Route
+            path="/register"
+            element={isAuthed ? <Navigate to="/dashboard" replace /> : <Register />}
           />
-          <Route 
-            path="/dashboard" 
-            element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/profile" 
-            element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/admin" 
-            element={isAuthenticated ? <AdminPanel /> : <Navigate to="/login" />} 
-          />
-          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
     </Router>

@@ -1,47 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile } from '../services/api';
-import { getUserData, setUserData } from '../utils/storage';
+import withAuth from '../hoc/withAuth';
+import useAuthStore from '../store/authStore';
+import { profileSchema } from '../validation/schemas';
 
 function Profile() {
-  const [user, setUser] = useState(null);
+  const { user, login } = useAuthStore();
+  const token = useAuthStore((s) => s.token);
   const [formData, setFormData] = useState({
-    name: '',
-    bio: ''
+    name: user?.name || '',
+    bio: user?.bio || ''
   });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const userData = getUserData();
-    setUser(userData);
-    if (userData) {
-      setFormData({
-        name: userData.name || '',
-        bio: userData.bio || ''
-      });
-    }
-  }, []);
-
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFieldErrors({ ...fieldErrors, [e.target.name]: undefined });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
+    setFieldErrors({});
+
+    const result = profileSchema.safeParse(formData);
+    if (!result.success) {
+      const errors = {};
+      for (const issue of result.error.issues) {
+        errors[issue.path[0]] = issue.message;
+      }
+      setFieldErrors(errors);
+      return;
+    }
 
     try {
-      // VULNERABILITY #2: No authorization check - can update any user's profile
-      const response = await updateProfile(user.id, formData);
-      
-      // VULNERABILITY #5: Updating localStorage with potentially sensitive data
-      setUserData(response.data);
-      setUser(response.data);
-      
+      const response = await updateProfile(user.id, result.data);
+      login(token, response.data);
       setMessage('Profile updated successfully!');
     } catch (error) {
       setMessage('Failed to update profile');
@@ -101,24 +98,25 @@ function Profile() {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                required
+                className={`w-full px-4 py-2 border rounded focus:outline-none focus:border-blue-500 ${fieldErrors.name ? 'border-red-400' : 'border-gray-300'}`}
               />
+              {fieldErrors.name && <p className="text-red-600 text-xs mt-1">{fieldErrors.name}</p>}
             </div>
 
             <div>
               <label className="block text-gray-700 font-semibold mb-2">
                 Bio
               </label>
-              {/* VULNERABILITY #3: No sanitization - XSS possible in bio field */}
               <textarea
                 name="bio"
                 value={formData.bio}
                 onChange={handleChange}
-                placeholder="Tell us about yourself... (Try: <img src=x onerror=alert('XSS')>)"
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                placeholder="Tell us about yourself..."
+                className={`w-full px-4 py-2 border rounded focus:outline-none focus:border-blue-500 ${fieldErrors.bio ? 'border-red-400' : 'border-gray-300'}`}
                 rows="4"
               />
+              {fieldErrors.bio && <p className="text-red-600 text-xs mt-1">{fieldErrors.bio}</p>}
+              <p className="text-gray-500 text-xs mt-1">{formData.bio?.length || 0}/500</p>
             </div>
 
             <button
@@ -133,22 +131,13 @@ function Profile() {
           {user?.bio && (
             <div className="mt-6 p-4 bg-gray-50 rounded">
               <h3 className="font-semibold mb-2">Current Bio:</h3>
-              {/* VULNERABILITY #3: Rendering unsanitized HTML */}
-              <div dangerouslySetInnerHTML={{ __html: user.bio }} />
+              <div>{user.bio}</div>
             </div>
           )}
-
-          {/* VULNERABILITY #5: Exposing sensitive data in UI */}
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
-            <h3 className="font-semibold mb-2 text-yellow-800">Debug Info (Should be removed in production!):</h3>
-            <pre className="text-xs overflow-auto">
-              {JSON.stringify(user, null, 2)}
-            </pre>
-          </div>
         </div>
       </div>
     </div>
   );
 }
 
-export default Profile;
+export default withAuth(Profile);
