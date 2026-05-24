@@ -1,28 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile } from '../services/api';
-import { getUserData, setUserData } from '../utils/storage';
 import withAuth from '../hoc/withAuth';
+import useAuthStore from '../store/authStore';
 
 function Profile() {
-  const [user, setUser] = useState(null);
+  const { user, login } = useAuthStore();
+  const token = useAuthStore((s) => s.token);
   const [formData, setFormData] = useState({
-    name: '',
-    bio: ''
+    name: user?.name || '',
+    bio: user?.bio || ''
   });
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const userData = getUserData();
-    setUser(userData);
-    if (userData) {
-      setFormData({
-        name: userData.name || '',
-        bio: userData.bio || ''
-      });
-    }
-  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -39,9 +29,7 @@ function Profile() {
       // VULNERABILITY #2: No authorization check - can update any user's profile
       const response = await updateProfile(user.id, formData);
       
-      // VULNERABILITY #5: Updating localStorage with potentially sensitive data
-      setUserData(response.data);
-      setUser(response.data);
+      login(token, response.data);
       
       setMessage('Profile updated successfully!');
     } catch (error) {

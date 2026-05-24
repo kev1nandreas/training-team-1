@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllUsers } from '../services/api';
-import { getUserData } from '../utils/storage';
 import withAuth from '../hoc/withAuth';
+import useAuthStore from '../store/authStore';
 
 function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
-  const [user, setUser] = useState(null);
+  const { user } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userData = getUserData();
-    setUser(userData);
-    
     loadUsers();
   }, []);
 

@@ -1,21 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getTasks, createTask, updateTask, deleteTask, searchTasks } from '../services/api';
-import { getUserData, clearUserData } from '../utils/storage';
-import { removeToken } from '../utils/cookies';
 import withAuth from '../hoc/withAuth';
+import useAuthStore from '../store/authStore';
 
 function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [searchResults, setSearchResults] = useState(null);
   const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium' });
   const [searchTerm, setSearchTerm] = useState('');
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userData = getUserData();
-    setUser(userData);
     loadTasks();
   }, []);
 
@@ -61,8 +58,7 @@ function Dashboard() {
   };
 
   const handleLogout = () => {
-    removeToken();
-    clearUserData();
+    logout();
     navigate('/login');
   };
 
