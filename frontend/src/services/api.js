@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL, ADMIN_API_KEY } from '../config';
-import { getToken } from '../utils/storage';
+import { getToken } from '../utils/cookies';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

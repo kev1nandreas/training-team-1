@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getTasks, createTask, updateTask, deleteTask, searchTasks } from '../services/api';
-import { getUserData, removeToken, clearUserData } from '../utils/storage';
+import { getUserData, clearUserData } from '../utils/storage';
+import { removeToken } from '../utils/cookies';
 
 function Dashboard() {
   const [tasks, setTasks] = useState([]);

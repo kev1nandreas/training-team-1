@@ -1,5 +1,6 @@
 import { produce } from "immer";
 import { create } from "zustand";
+import { removeToken, setToken } from "../utils/cookies";
 
 const useAuthStore = create((set) => ({
 	token: null,
@@ -8,6 +9,7 @@ const useAuthStore = create((set) => ({
 	isLoading: true,
 
 	login: (token, user) => {
+		setToken(token);
 		set(
 			produce((state) => {
 				state.token = token;
@@ -18,6 +20,7 @@ const useAuthStore = create((set) => ({
 	},
 
 	logout: () => {
+		removeToken();
 		set(
 			produce((state) => {
 				state.token = null;
