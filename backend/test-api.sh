@@ -77,6 +77,158 @@ fi
 
 ((++test_count))
 
+# Test XSS-001: Script tag in bio (from xss-tests.md)
+xss_payload='<script>alert("XSS")</script>'
+
+res=$(curl -X PUT -sS \
+    -H "$content_type_header" \
+    -d '{"bio":"'"$xss_payload"'"}' \
+    --location "$base_url/users/$id/profile" \
+    -H "$auth_header $token")
+
+bio=$(echo "$res" | jq -r '.bio')
+
+if [[ "$bio" != *"<script>"* ]] && [[ "$bio" != *"alert"* ]]; then
+  echo "TEST $test_count: ✅ PASS - XSS-001: Script tag sanitized"
+else
+  echo "TEST $test_count: ❌ FAIL - XSS-001: Script tag NOT sanitized"
+fi
+
+((++test_count))
+
+# Test XSS-002: Image tag with onerror (from xss-tests.md)
+xss_payload='<img src=x onerror=alert("XSS")>'
+
+res=$(curl -X PUT -sS \
+    -H "$content_type_header" \
+    -d '{"bio":"'"$xss_payload"'"}' \
+    --location "$base_url/users/$id/profile" \
+    -H "$auth_header $token")
+
+bio=$(echo "$res" | jq -r '.bio')
+
+if [[ "$bio" != *"onerror"* ]]; then
+  echo "TEST $test_count: ✅ PASS - XSS-002: Image onerror sanitized"
+else
+  echo "TEST $test_count: ❌ FAIL - XSS-002: Image onerror NOT sanitized"
+fi
+
+((++test_count))
+
+# Test XSS-003: SVG tag (from xss-tests.md)
+xss_payload='<svg onload=alert("XSS")></svg>'
+
+res=$(curl -X PUT -sS \
+    -H "$content_type_header" \
+    -d '{"bio":"'"$xss_payload"'"}' \
+    --location "$base_url/users/$id/profile" \
+    -H "$auth_header $token")
+
+bio=$(echo "$res" | jq -r '.bio')
+
+if [[ "$bio" != *"onload"* ]] && [[ "$bio" != *"<svg"* ]]; then
+  echo "TEST $test_count: ✅ PASS - XSS-003: SVG sanitized"
+else
+  echo "TEST $test_count: ❌ FAIL - XSS-003: SVG NOT sanitized"
+fi
+
+((++test_count))
+
+# Test XSS-006: JavaScript protocol (from xss-tests.md)
+xss_payload='<a href="javascript:alert('"'"'XSS'"'"')">Click</a>'
+
+res=$(curl -X PUT -sS \
+    -H "$content_type_header" \
+    -d '{"bio":"'"$xss_payload"'"}' \
+    --location "$base_url/users/$id/profile" \
+    -H "$auth_header $token")
+
+bio=$(echo "$res" | jq -r '.bio')
+
+if [[ "$bio" != *"javascript:"* ]]; then
+  echo "TEST $test_count: ✅ PASS - XSS-006: JavaScript protocol sanitized"
+else
+  echo "TEST $test_count: ❌ FAIL - XSS-006: JavaScript protocol NOT sanitized"
+fi
+
+((++test_count))
+
+# Test XSS-005a: Body onload (from xss-tests.md)
+xss_payload='<body onload=alert("XSS")>'
+
+res=$(curl -X PUT -sS \
+    -H "$content_type_header" \
+    -d '{"bio":"'"$xss_payload"'"}' \
+    --location "$base_url/users/$id/profile" \
+    -H "$auth_header $token")
+
+bio=$(echo "$res" | jq -r '.bio')
+
+if [[ "$bio" != *"onload"* ]]; then
+  echo "TEST $test_count: ✅ PASS - XSS-005a: Body onload sanitized"
+else
+  echo "TEST $test_count: ❌ FAIL - XSS-005a: Body onload NOT sanitized"
+fi
+
+((++test_count))
+
+# Test XSS-005b: Input onfocus (from xss-tests.md)
+xss_payload='<input onfocus=alert("XSS") autofocus>'
+
+res=$(curl -X PUT -sS \
+    -H "$content_type_header" \
+    -d '{"bio":"'"$xss_payload"'"}' \
+    --location "$base_url/users/$id/profile" \
+    -H "$auth_header $token")
+
+bio=$(echo "$res" | jq -r '.bio')
+
+if [[ "$bio" != *"onfocus"* ]]; then
+  echo "TEST $test_count: ✅ PASS - XSS-005b: Input onfocus sanitized"
+else
+  echo "TEST $test_count: ❌ FAIL - XSS-005b: Input onfocus NOT sanitized"
+fi
+
+((++test_count))
+
+# Test XSS-005c: Marquee onstart (from xss-tests.md)
+xss_payload='<marquee onstart=alert("XSS")>'
+
+res=$(curl -X PUT -sS \
+    -H "$content_type_header" \
+    -d '{"bio":"'"$xss_payload"'"}' \
+    --location "$base_url/users/$id/profile" \
+    -H "$auth_header $token")
+
+bio=$(echo "$res" | jq -r '.bio')
+
+if [[ "$bio" != *"onstart"* ]]; then
+  echo "TEST $test_count: ✅ PASS - XSS-005c: Marquee onstart sanitized"
+else
+  echo "TEST $test_count: ❌ FAIL - XSS-005c: Marquee onstart NOT sanitized"
+fi
+
+((++test_count))
+
+# Test XSS-005d: Div onmouseover (from xss-tests.md)
+xss_payload='<div onmouseover=alert("XSS")>Hover me</div>'
+
+res=$(curl -X PUT -sS \
+    -H "$content_type_header" \
+    -d '{"bio":"'"$xss_payload"'"}' \
+    --location "$base_url/users/$id/profile" \
+    -H "$auth_header $token")
+
+bio=$(echo "$res" | jq -r '.bio')
+
+if [[ "$bio" != *"onmouseover"* ]]; then
+  echo "TEST $test_count: ✅ PASS - XSS-005d: Div onmouseover sanitized"
+else
+  echo "TEST $test_count: ❌ FAIL - XSS-005d: Div onmouseover NOT sanitized"
+fi
+
+((++test_count))
+
 # Negative: changing other users' bio
 
 adminId=1
@@ -197,9 +349,9 @@ bio=$(echo "$res" | jq -r '.bio')
 err=$(echo "$res" | jq -r '.error')
 
 if [[ "$bio" == "$newBio" ]]; then
-  echo "TEST $test_count: ✅ PASS - Bio of regular user changed successfully!"
+  echo "TEST $test_count: ✅ PASS - Bio of admin user changed successfully!"
 elif [[ -n "$err" && "$err" != "null" ]]; then
-  echo "TEST $test_count: ❌ FAIL - Bio of regular user not changed"
+  echo "TEST $test_count: ❌ FAIL - Bio of admin user not changed"
 fi
 
 ((++test_count))
