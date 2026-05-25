@@ -32,7 +32,7 @@ function Login() {
       login(response.data.token, response.data.user);
       navigate('/dashboard');
     } catch (err) {
-      setError('Login failed. Please check your credentials.');
+      setError(err.response?.data?.error || 'Login failed. Please check your credentials.');
       console.error('Login error');
     }
   };
