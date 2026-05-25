@@ -46,7 +46,7 @@ function Register() {
         navigate('/login');
       }, 2000);
     } catch (err) {
-      setError('Registration failed');
+      setError(err.response?.data?.error || 'Registration failed');
       console.error('Registration error:', err);
     }
   };

@@ -20,7 +20,7 @@ function AdminPanel() {
       const response = await getAllUsers();
       setUsers(response.data.users);
     } catch (err) {
-      setError('Failed to load users');
+      setError(err.response?.data?.error || 'Failed to load users');
       console.error('Error loading users:', err);
     }
   };
