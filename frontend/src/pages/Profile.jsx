@@ -38,7 +38,7 @@ function Profile() {
 
     try {
       const response = await updateProfile(user.id, result.data);
-      login(token, response.data);
+      await login(token, response.data);
       setMessage('Profile updated successfully!');
     } catch (error) {
       setMessage('Failed to update profile');
