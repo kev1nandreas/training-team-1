@@ -149,19 +149,25 @@ fi
 
 # Test XSS-006: JavaScript protocol (from xss-tests.md)
 xss_payload='<a href="javascript:alert('"'"'XSS'"'"')">Click</a>'
+body=$(jq -nc --arg bio "$xss_payload" '{bio:$bio}')
 
 res=$(curl -X PUT -sS \
     -H "$content_type_header" \
-    -d '{"bio":"'"$xss_payload"'"}' \
+    -d "$body" \
     --location "$base_url/users/$id/profile" \
     -H "$auth_header $token")
 
 bio=$(echo "$res" | jq -r '.bio')
+err=$(echo "$res" | jq -r '.error')
 
-if [[ "$bio" != *"javascript:"* ]]; then
+if [[ -n "$err" && "$err" != "null" ]]; then
+  echo "TEST $test_count: ❌ FAIL - XSS-006: Request failed: $err"
+  exit 1
+elif [[ "$bio" != *"javascript:"* ]]; then
   echo "TEST $test_count: ✅ PASS - XSS-006: JavaScript protocol sanitized"
 else
   echo "TEST $test_count: ❌ FAIL - XSS-006: JavaScript protocol NOT sanitized"
+  exit 1
 fi
 
 ((++test_count))
