@@ -249,19 +249,25 @@ fi
 
 # Test XSS-005d: Div onmouseover (from xss-tests.md)
 xss_payload='<div onmouseover=alert("XSS")>Hover me</div>'
+body=$(jq -nc --arg bio "$xss_payload" '{bio:$bio}')
 
 res=$(curl -X PUT -sS \
     -H "$content_type_header" \
-    -d '{"bio":"'"$xss_payload"'"}' \
+    -d "$body" \
     --location "$base_url/users/$id/profile" \
     -H "$auth_header $token")
 
 bio=$(echo "$res" | jq -r '.bio')
+err=$(echo "$res" | jq -r '.error')
 
-if [[ "$bio" != *"onmouseover"* ]]; then
+if [[ -n "$err" && "$err" != "null" ]]; then
+  echo "TEST $test_count: ❌ FAIL - XSS-005d: Request failed: $err"
+  exit 1
+elif [[ "$bio" != *"onmouseover"* ]]; then
   echo "TEST $test_count: ✅ PASS - XSS-005d: Div onmouseover sanitized"
 else
   echo "TEST $test_count: ❌ FAIL - XSS-005d: Div onmouseover NOT sanitized"
+  exit 1
 fi
 
 ((++test_count))
