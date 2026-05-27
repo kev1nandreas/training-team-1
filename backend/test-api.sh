@@ -79,15 +79,16 @@ fi
 
 # Test XSS-001: Script tag in bio (from xss-tests.md)
 xss_payload='<script>alert("XSS")</script>'
+body=$(jq -nc --arg bio "$xss_payload" '{bio:$bio}')
 
 res=$(curl -X PUT -sS \
     -H "$content_type_header" \
-    -d '{"bio":"'"$xss_payload"'"}' \
+    -d "$body" \
     --location "$base_url/users/$id/profile" \
     -H "$auth_header $token")
 
 bio=$(echo "$res" | jq -r '.bio')
-
+err=$(echo "$res" | jq -r '.error')
 if [[ "$bio" != *"<script>"* ]] && [[ "$bio" != *"alert"* ]]; then
   echo "TEST $test_count: ✅ PASS - XSS-001: Script tag sanitized"
 else
