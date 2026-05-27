@@ -199,19 +199,25 @@ fi
 
 # Test XSS-005b: Input onfocus (from xss-tests.md)
 xss_payload='<input onfocus=alert("XSS") autofocus>'
+body=$(jq -nc --arg bio "$xss_payload" '{bio:$bio}')
 
 res=$(curl -X PUT -sS \
     -H "$content_type_header" \
-    -d '{"bio":"'"$xss_payload"'"}' \
+    -d "$body" \
     --location "$base_url/users/$id/profile" \
     -H "$auth_header $token")
 
 bio=$(echo "$res" | jq -r '.bio')
+err=$(echo "$res" | jq -r '.error')
 
-if [[ "$bio" != *"onfocus"* ]]; then
+if [[ -n "$err" && "$err" != "null" ]]; then
+  echo "TEST $test_count: ❌ FAIL - XSS-005b: Request failed: $err"
+  exit 1
+elif [[ "$bio" != *"onfocus"* ]]; then
   echo "TEST $test_count: ✅ PASS - XSS-005b: Input onfocus sanitized"
 else
   echo "TEST $test_count: ❌ FAIL - XSS-005b: Input onfocus NOT sanitized"
+  exit 1
 fi
 
 ((++test_count))
