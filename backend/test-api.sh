@@ -99,19 +99,25 @@ fi
 
 # Test XSS-002: Image tag with onerror (from xss-tests.md)
 xss_payload='<img src=x onerror=alert("XSS")>'
+body=$(jq -nc --arg bio "$xss_payload" '{bio:$bio}')
 
 res=$(curl -X PUT -sS \
     -H "$content_type_header" \
-    -d '{"bio":"'"$xss_payload"'"}' \
+    -d "$body" \
     --location "$base_url/users/$id/profile" \
     -H "$auth_header $token")
 
 bio=$(echo "$res" | jq -r '.bio')
+err=$(echo "$res" | jq -r '.error')
 
-if [[ "$bio" != *"onerror"* ]]; then
+if [[ -n "$err" && "$err" != "null" ]]; then
+  echo "TEST $test_count: ❌ FAIL - XSS-002: Request failed: $err"
+  exit 1
+elif [[ "$bio" != *"onerror"* ]]; then
   echo "TEST $test_count: ✅ PASS - XSS-002: Image onerror sanitized"
 else
   echo "TEST $test_count: ❌ FAIL - XSS-002: Image onerror NOT sanitized"
+  exit 1
 fi
 
 ((++test_count))
