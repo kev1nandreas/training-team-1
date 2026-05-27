@@ -124,19 +124,25 @@ fi
 
 # Test XSS-003: SVG tag (from xss-tests.md)
 xss_payload='<svg onload=alert("XSS")></svg>'
+body=$(jq -nc --arg bio "$xss_payload" '{bio:$bio}')
 
 res=$(curl -X PUT -sS \
     -H "$content_type_header" \
-    -d '{"bio":"'"$xss_payload"'"}' \
+    -d "$body" \
     --location "$base_url/users/$id/profile" \
     -H "$auth_header $token")
 
 bio=$(echo "$res" | jq -r '.bio')
+err=$(echo "$res" | jq -r '.error')
 
-if [[ "$bio" != *"onload"* ]] && [[ "$bio" != *"<svg"* ]]; then
+if [[ -n "$err" && "$err" != "null" ]]; then
+  echo "TEST $test_count: ❌ FAIL - XSS-003: Request failed: $err"
+  exit 1
+elif [[ "$bio" != *"onload"* ]] && [[ "$bio" != *"<svg"* ]]; then
   echo "TEST $test_count: ✅ PASS - XSS-003: SVG sanitized"
 else
   echo "TEST $test_count: ❌ FAIL - XSS-003: SVG NOT sanitized"
+  exit 1
 fi
 
 ((++test_count))
