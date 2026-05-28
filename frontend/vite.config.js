@@ -16,7 +16,7 @@ function buildCsp(isDev) {
       ? "script-src 'self' 'unsafe-inline'"
       : "script-src 'self'",
     isDev
-      ? "connect-src 'self' ws: wss: http://localhost:8080"
+      ? "connect-src 'self' ws: wss: http://localhost:8081"
       : "connect-src 'self'",
   ]
 
@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
       },
       proxy: {
         '/api': {
-          target: 'http://localhost:8080',
+          target: 'http://localhost:8081',
           changeOrigin: true,
         }
       }
