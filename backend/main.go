@@ -35,9 +35,9 @@ func main() {
 
 	// VULNERABILITY: Permissive CORS - allows all origins
 	r.Use(cors.New(cors.Config{
-		AllowAllOrigins:  true,
+		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"*"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
@@ -47,8 +47,6 @@ func main() {
 	r.POST("/api/auth/login", handlers.Login)
 
 	// VULNERABILITY #2: No authentication middleware on these routes!
-	r.GET("/api/tasks/search", handlers.SearchTasks) // Should require auth
-	r.DELETE("/api/tasks/:id", handlers.DeleteTask)  // Should require auth
 
 	// Protected routes (with auth middleware)
 	authorized := r.Group("/api")
@@ -57,6 +55,8 @@ func main() {
 		authorized.GET("/tasks", handlers.GetTasks)
 		authorized.POST("/tasks", handlers.CreateTask)
 		authorized.PUT("/tasks/:id", handlers.UpdateTask)
+		authorized.GET("/tasks/search", handlers.SearchTasks) // Should require auth
+		authorized.DELETE("/tasks/:id", handlers.DeleteTask)  // Should require auth
 		authorized.GET("/users/me", handlers.GetCurrentUser)
 		authorized.PUT("/users/:id/profile", handlers.UpdateProfile)
 		authorized.GET("/admin/users", handlers.GetAllUsers)
