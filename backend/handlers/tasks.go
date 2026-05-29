@@ -14,6 +14,16 @@ type CreateTaskRequest struct {
 	Priority    string `json:"priority"`
 }
 
+type UpdateTaskRequest struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	Status      *string `json:"status"`
+	Priority    *string `json:"priority"`
+}
+
+var validPriorities = map[string]bool{"low": true, "medium": true, "high": true}
+var validStatuses = map[string]bool{"todo": true, "in_progress": true, "done": true}
+
 func GetTasks(c *gin.Context) {
 	userID := c.GetUint("user_id")
 
@@ -23,7 +33,6 @@ func GetTasks(c *gin.Context) {
 	c.JSON(http.StatusOK, tasks)
 }
 
-// VULNERABILITY #2: No input validation or sanitization
 func CreateTask(c *gin.Context) {
 	var req CreateTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -31,15 +40,29 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 
+	// Default and validate priority
+	if req.Priority == "" {
+		req.Priority = "medium"
+	}
+	if !validPriorities[req.Priority] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid priority: must be low, medium, or high"})
+		return
+	}
+
 	userID := c.GetUint("user_id")
 
-	// VULNERABILITY #3: No sanitization - XSS possible through description
+	// Sanitize user-supplied text to prevent stored XSS
 	task := models.Task{
-		Title:       req.Title,       // No sanitization
-		Description: req.Description, // XSS vulnerability!
+		Title:       sanitizeHTML(req.Title),
+		Description: sanitizeHTML(req.Description),
 		Priority:    req.Priority,
 		Status:      "todo",
 		UserID:      userID,
+	}
+
+	if task.Title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Title is required"})
+		return
 	}
 
 	if err := database.DB.Create(&task).Error; err != nil {
@@ -60,26 +83,63 @@ func UpdateTask(c *gin.Context) {
 		return
 	}
 
-	// VULNERABILITY #2: No input validation
-	var updates map[string]interface{}
-	if err := c.ShouldBindJSON(&updates); err != nil {
+	// Bind to a typed struct (prevents mass assignment of arbitrary columns)
+	var req UpdateTaskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// VULNERABILITY #3: No sanitization on updated fields
+	// Build a whitelist of updatable fields, validating and sanitizing each
+	updates := map[string]interface{}{}
+	if req.Title != nil {
+		title := sanitizeHTML(*req.Title)
+		if title == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Title cannot be empty"})
+			return
+		}
+		updates["title"] = title
+	}
+	if req.Description != nil {
+		updates["description"] = sanitizeHTML(*req.Description)
+	}
+	if req.Priority != nil {
+		if !validPriorities[*req.Priority] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid priority: must be low, medium, or high"})
+			return
+		}
+		updates["priority"] = *req.Priority
+	}
+	if req.Status != nil {
+		if !validStatuses[*req.Status] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status: must be todo, in_progress, or done"})
+			return
+		}
+		updates["status"] = *req.Status
+	}
+
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid fields to update"})
+		return
+	}
+
 	database.DB.Model(&task).Updates(updates)
 
 	c.JSON(http.StatusOK, task)
 }
 
-// VULNERABILITY #2: No authentication required (exposed publicly in main.go)
-// VULNERABILITY #2: No authorization check
 func DeleteTask(c *gin.Context) {
 	taskID := c.Param("id")
+	userID := c.GetUint("user_id")
 
-	// Anyone can delete any task!
-	if err := database.DB.Delete(&models.Task{}, taskID).Error; err != nil {
+	// Only allow deleting a task the authenticated user owns
+	var task models.Task
+	if err := database.DB.Where("id = ? AND user_id = ?", taskID, userID).First(&task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	if err := database.DB.Delete(&task).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
 		return
 	}
@@ -87,8 +147,6 @@ func DeleteTask(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted"})
 }
 
-// VULNERABILITY #1: SQL Injection in search functionality
-// VULNERABILITY #2: No authentication required (exposed publicly in main.go)
 func SearchTasks(c *gin.Context) {
 	searchTerm := c.Query("q")
 
@@ -97,16 +155,17 @@ func SearchTasks(c *gin.Context) {
 		return
 	}
 
-	// VULNERABILITY #1: Direct string concatenation - SQL INJECTION!
-	query := "SELECT * FROM tasks WHERE title LIKE ? OR description LIKE ?"
-	like := "%" + searchTerm + "%"
+	userID := c.GetUint("user_id")
 
-	// Using raw SQL without parameterization
-	results, err := database.ExecuteRawSQL(query, like, like)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed", "details": err.Error()})
+	// Parameterized query, scoped to the authenticated user's own tasks
+	var tasks []models.Task
+	like := "%" + searchTerm + "%"
+	if err := database.DB.
+		Where("user_id = ? AND (title LIKE ? OR description LIKE ?)", userID, like, like).
+		Find(&tasks).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
 	}
 
-	c.JSON(http.StatusOK, results)
+	c.JSON(http.StatusOK, tasks)
 }
