@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"securetask/database"
 	"securetask/models"
@@ -99,10 +98,11 @@ func SearchTasks(c *gin.Context) {
 	}
 
 	// VULNERABILITY #1: Direct string concatenation - SQL INJECTION!
-	query := fmt.Sprintf("SELECT * FROM tasks WHERE title LIKE '%%%s%%' OR description LIKE '%%%s%%'", searchTerm, searchTerm)
+	query := "SELECT * FROM tasks WHERE title LIKE ? OR description LIKE ?"
+	like := "%" + searchTerm + "%"
 
 	// Using raw SQL without parameterization
-	results, err := database.ExecuteRawSQL(query)
+	results, err := database.ExecuteRawSQL(query, like, like)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed", "details": err.Error()})
 		return
