@@ -316,7 +316,7 @@ fi
 
 # Negative: accessing admin endpoint as regular user with admin key
 
-adminKey=''
+adminKey='wKMKOSnVjc1tkgN50QD+FkBdoZVT174q0ZM2f6ie5Mw='
 
 res=$(curl -X GET -sS \
     -H "$content_type_header" \
@@ -569,6 +569,328 @@ http_code=$(echo "$res" | tail -n1)
 
 if [[ "$http_code" == "429" ]]; then
   echo "TEST $test_count: ✅ PASS - Rate limiting works"
-else 
+else
   echo "TEST $test_count: ❌ FAIL - Rate limiting does not work"
+fi
+
+((++test_count))
+
+# =====================================================================
+# Task endpoint security tests
+# Covers fixes in:
+#   database.go -> parameterized raw SQL (SQL injection prevention)
+#   main.go     -> CORS policy & auth middleware on search/delete
+#   tasks.go    -> input sanitization (XSS), validation, authn/authz
+# =====================================================================
+
+# main.go: auth middleware on /tasks/search (was public before)
+# Negative: search tasks without authentication
+
+res=$(curl -X GET -sS \
+    -H "$content_type_header" \
+    -w '\n%{http_code}' \
+    --location "$base_url/tasks/search?q=test")
+
+http_code=$(echo "$res" | tail -n1)
+
+if [[ "$http_code" == "401" ]]; then
+  echo "TEST $test_count: ✅ PASS - Search tasks requires authentication"
+else
+  echo "TEST $test_count: ❌ FAIL - Search tasks accessible without authentication (got $http_code)"
+fi
+
+((++test_count))
+
+# main.go: auth middleware on DELETE /tasks/:id (was public before)
+# Negative: delete task without authentication
+
+res=$(curl -X DELETE -sS \
+    -H "$content_type_header" \
+    -w '\n%{http_code}' \
+    --location "$base_url/tasks/1")
+
+http_code=$(echo "$res" | tail -n1)
+
+if [[ "$http_code" == "401" ]]; then
+  echo "TEST $test_count: ✅ PASS - Delete task requires authentication"
+else
+  echo "TEST $test_count: ❌ FAIL - Delete task accessible without authentication (got $http_code)"
+fi
+
+((++test_count))
+
+# tasks.go: create task happy path (regular user) - capture task id
+task_marker="marker-$rand"
+body=$(jq -nc --arg t "Buy groceries $task_marker" --arg d "milk and eggs" '{title:$t, description:$d, priority:"high"}')
+
+res=$(curl -X POST -sS \
+    -H "$content_type_header" \
+    -d "$body" \
+    --location "$base_url/tasks" \
+    -H "$auth_header $token")
+
+userTaskId=$(echo "$res" | jq -r '.id')
+taskStatus=$(echo "$res" | jq -r '.status')
+priority=$(echo "$res" | jq -r '.priority')
+
+if [[ -n "$userTaskId" && "$userTaskId" != "null" && "$taskStatus" == "todo" && "$priority" == "high" ]]; then
+  echo "TEST $test_count: ✅ PASS - Create task with valid input succeeds"
+else
+  echo "TEST $test_count: ❌ FAIL - Create task with valid input failed"
+fi
+
+((++test_count))
+
+# tasks.go validation: title is required
+body='{"description":"no title here","priority":"low"}'
+
+res=$(curl -X POST -sS \
+    -H "$content_type_header" \
+    -d "$body" \
+    -w '\n%{http_code}' \
+    --location "$base_url/tasks" \
+    -H "$auth_header $token")
+
+http_code=$(echo "$res" | tail -n1)
+
+if [[ "$http_code" == "400" ]]; then
+  echo "TEST $test_count: ✅ PASS - Create task without title rejected"
+else
+  echo "TEST $test_count: ❌ FAIL - Create task without title accepted (got $http_code)"
+fi
+
+((++test_count))
+
+# tasks.go validation: title that is only HTML sanitizes to empty -> rejected
+body='{"title":"<script></script>","description":"x","priority":"low"}'
+
+res=$(curl -X POST -sS \
+    -H "$content_type_header" \
+    -d "$body" \
+    -w '\n%{http_code}' \
+    --location "$base_url/tasks" \
+    -H "$auth_header $token")
+
+http_code=$(echo "$res" | tail -n1)
+
+if [[ "$http_code" == "400" ]]; then
+  echo "TEST $test_count: ✅ PASS - Create task with HTML-only title rejected after sanitization"
+else
+  echo "TEST $test_count: ❌ FAIL - Create task with HTML-only title accepted (got $http_code)"
+fi
+
+((++test_count))
+
+# tasks.go validation: invalid priority rejected
+body='{"title":"valid title","description":"x","priority":"urgent"}'
+
+res=$(curl -X POST -sS \
+    -H "$content_type_header" \
+    -d "$body" \
+    -w '\n%{http_code}' \
+    --location "$base_url/tasks" \
+    -H "$auth_header $token")
+
+http_code=$(echo "$res" | tail -n1)
+
+if [[ "$http_code" == "400" ]]; then
+  echo "TEST $test_count: ✅ PASS - Create task with invalid priority rejected"
+else
+  echo "TEST $test_count: ❌ FAIL - Create task with invalid priority accepted (got $http_code)"
+fi
+
+((++test_count))
+
+# tasks.go XSS: script tag in title/description sanitized on create
+body=$(jq -nc '{title:"<script>alert(1)</script>Title", description:"<img src=x onerror=alert(1)>desc", priority:"medium"}')
+
+res=$(curl -X POST -sS \
+    -H "$content_type_header" \
+    -d "$body" \
+    --location "$base_url/tasks" \
+    -H "$auth_header $token")
+
+title=$(echo "$res" | jq -r '.title')
+desc=$(echo "$res" | jq -r '.description')
+xssTaskId=$(echo "$res" | jq -r '.id')
+
+if [[ "$title" != *"<script>"* && "$desc" != *"onerror"* && "$desc" != *"<img"* ]]; then
+  echo "TEST $test_count: ✅ PASS - Create task sanitizes XSS in title and description"
+else
+  echo "TEST $test_count: ❌ FAIL - Create task did NOT sanitize XSS (title=$title desc=$desc)"
+fi
+
+((++test_count))
+
+# tasks.go validation: invalid status rejected on update
+body='{"status":"finished"}'
+
+res=$(curl -X PUT -sS \
+    -H "$content_type_header" \
+    -d "$body" \
+    -w '\n%{http_code}' \
+    --location "$base_url/tasks/$userTaskId" \
+    -H "$auth_header $token")
+
+http_code=$(echo "$res" | tail -n1)
+
+if [[ "$http_code" == "400" ]]; then
+  echo "TEST $test_count: ✅ PASS - Update task with invalid status rejected"
+else
+  echo "TEST $test_count: ❌ FAIL - Update task with invalid status accepted (got $http_code)"
+fi
+
+((++test_count))
+
+# tasks.go: valid status update succeeds and sanitizes XSS in description
+body=$(jq -nc '{status:"done", description:"<svg onload=alert(1)></svg>updated"}')
+
+res=$(curl -X PUT -sS \
+    -H "$content_type_header" \
+    -d "$body" \
+    --location "$base_url/tasks/$userTaskId" \
+    -H "$auth_header $token")
+
+taskStatus=$(echo "$res" | jq -r '.status')
+desc=$(echo "$res" | jq -r '.description')
+
+if [[ "$taskStatus" == "done" && "$desc" != *"onload"* && "$desc" != *"<svg"* ]]; then
+  echo "TEST $test_count: ✅ PASS - Update task applies valid status and sanitizes XSS"
+else
+  echo "TEST $test_count: ❌ FAIL - Update task failed (status=$taskStatus desc=$desc)"
+fi
+
+((++test_count))
+
+# tasks.go authz: a user cannot update another user's task (admin's task -> 404)
+admin_body=$(jq -nc --arg t "Admin secret task $rand" '{title:$t, description:"confidential", priority:"high"}')
+
+res=$(curl -X POST -sS \
+    -H "$content_type_header" \
+    -d "$admin_body" \
+    --location "$base_url/tasks" \
+    -H "$auth_header $adminToken")
+
+adminTaskId=$(echo "$res" | jq -r '.id')
+
+res=$(curl -X PUT -sS \
+    -H "$content_type_header" \
+    -d '{"title":"hijacked"}' \
+    -w '\n%{http_code}' \
+    --location "$base_url/tasks/$adminTaskId" \
+    -H "$auth_header $token")
+
+http_code=$(echo "$res" | tail -n1)
+
+if [[ "$http_code" == "404" ]]; then
+  echo "TEST $test_count: ✅ PASS - User cannot update another user's task"
+else
+  echo "TEST $test_count: ❌ FAIL - User can update another user's task (got $http_code)"
+fi
+
+((++test_count))
+
+# tasks.go authz: a user cannot delete another user's task (admin's task -> 404)
+res=$(curl -X DELETE -sS \
+    -H "$content_type_header" \
+    -w '\n%{http_code}' \
+    --location "$base_url/tasks/$adminTaskId" \
+    -H "$auth_header $token")
+
+http_code=$(echo "$res" | tail -n1)
+
+if [[ "$http_code" == "404" ]]; then
+  echo "TEST $test_count: ✅ PASS - User cannot delete another user's task"
+else
+  echo "TEST $test_count: ❌ FAIL - User can delete another user's task (got $http_code)"
+fi
+
+((++test_count))
+
+# database.go + tasks.go: SQL injection in search is neutralized AND search
+# is scoped to the requesting user (admin's task must not leak to regular user)
+sqli_payload="%' OR '1'='1"
+encoded_payload=$(jq -rn --arg q "$sqli_payload" '$q|@uri')
+
+res=$(curl -X GET -sS \
+    -H "$content_type_header" \
+    --location "$base_url/tasks/search?q=$encoded_payload" \
+    -H "$auth_header $token")
+
+# A successful injection would surface admin's task or trigger a SQL error.
+# With parameterization the payload is a literal LIKE term: no error, no leak.
+err=$(echo "$res" | jq -r '.error? // empty')
+leaked=$(echo "$res" | jq -r '[.[]? | select(.title | contains("Admin secret task"))] | length')
+
+if [[ ( "$leaked" == "0" ) && ( "$err" == "null" || -z "$err" ) ]]; then
+  echo "TEST $test_count: ✅ PASS - SQL injection in search neutralized & results scoped to user"
+else
+  echo "TEST $test_count: ❌ FAIL - SQL injection in search leaked data or errored (leaked=$leaked err=$err)"
+fi
+
+((++test_count))
+
+# tasks.go: legitimate search returns the user's own matching task
+res=$(curl -X GET -sS \
+    -H "$content_type_header" \
+    --location "$base_url/tasks/search?q=$task_marker" \
+    -H "$auth_header $token")
+
+found=$(echo "$res" | jq -r '[.[]? | select(.title | contains("'"$task_marker"'"))] | length')
+
+if [[ "$found" -ge 1 ]]; then
+  echo "TEST $test_count: ✅ PASS - Search returns user's own matching task"
+else
+  echo "TEST $test_count: ❌ FAIL - Search did not return user's own matching task"
+fi
+
+((++test_count))
+
+# tasks.go: user can delete their own task
+res=$(curl -X DELETE -sS \
+    -H "$content_type_header" \
+    -w '\n%{http_code}' \
+    --location "$base_url/tasks/$userTaskId" \
+    -H "$auth_header $token")
+
+http_code=$(echo "$res" | tail -n1)
+
+if [[ "$http_code" == "200" ]]; then
+  echo "TEST $test_count: ✅ PASS - User can delete their own task"
+else
+  echo "TEST $test_count: ❌ FAIL - User cannot delete their own task (got $http_code)"
+fi
+
+((++test_count))
+
+# main.go CORS: requests from a disallowed origin are not granted access
+res=$(curl -X GET -sS -D - -o /dev/null \
+    -H "$content_type_header" \
+    -H "Origin: http://evil.example.com" \
+    --location "$base_url/tasks" \
+    -H "$auth_header $token")
+
+acao=$(echo "$res" | grep -i '^access-control-allow-origin:' | tr -d '\r' | awk '{print $2}')
+
+if [[ "$acao" != "http://evil.example.com" && "$acao" != "*" ]]; then
+  echo "TEST $test_count: ✅ PASS - CORS rejects disallowed origin (no ACAO=evil/*)"
+else
+  echo "TEST $test_count: ❌ FAIL - CORS allows disallowed origin (ACAO=$acao)"
+fi
+
+((++test_count))
+
+# main.go CORS: requests from the allowed origin are granted access
+res=$(curl -X GET -sS -D - -o /dev/null \
+    -H "$content_type_header" \
+    -H "Origin: http://localhost:5173" \
+    --location "$base_url/tasks" \
+    -H "$auth_header $token")
+
+acao=$(echo "$res" | grep -i '^access-control-allow-origin:' | tr -d '\r' | awk '{print $2}')
+
+if [[ "$acao" == "http://localhost:5173" ]]; then
+  echo "TEST $test_count: ✅ PASS - CORS allows the configured origin"
+else
+  echo "TEST $test_count: ❌ FAIL - CORS did not allow the configured origin (ACAO=$acao)"
 fi
