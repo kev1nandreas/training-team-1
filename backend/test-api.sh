@@ -316,7 +316,7 @@ fi
 
 # Negative: accessing admin endpoint as regular user with admin key
 
-adminKey='wKMKOSnVjc1tkgN50QD+FkBdoZVT174q0ZM2f6ie5Mw='
+adminKey=''
 
 res=$(curl -X GET -sS \
     -H "$content_type_header" \
