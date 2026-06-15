@@ -8,8 +8,8 @@ const useAuthStore = create((set) => ({
 	isAuthed: false,
 	isLoading: true,
 
-	login: (token, user) => {
-		setToken(token);
+	login: async (token, user) => {
+		await setToken(token);
 		set(
 			produce((state) => {
 				state.token = token;

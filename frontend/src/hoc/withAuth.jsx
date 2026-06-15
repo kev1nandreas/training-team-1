@@ -10,24 +10,26 @@ function withAuth(WrappedComponent, { roles = [] } = {}) {
     const navigate = useNavigate();
 
     useEffect(() => {
-      const token = getToken();
+      const initAuth = async () => {
+        const token = await getToken();
 
-      if (!token) {
-        useAuthStore.getState().logout();
-        stopLoading();
-        return;
-      }
-
-      getCurrentUser()
-        .then((res) => {
-          login(token, res.data);
-        })
-        .catch(() => {
+        if (!token) {
           useAuthStore.getState().logout();
-        })
-        .finally(() => {
           stopLoading();
-        });
+          return;
+        }
+
+        try {
+          const res = await getCurrentUser();
+          await login(token, res.data);
+        } catch (error) {
+          useAuthStore.getState().logout();
+        } finally {
+          stopLoading();
+        }
+      };
+
+      initAuth();
     }, []);
 
     useEffect(() => {
