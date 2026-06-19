@@ -29,7 +29,7 @@
 
 **Payload**: `<script>alert('XSS')</script>`
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
@@ -52,7 +52,7 @@
 
 **Payload**: `<img src=x onerror=alert('XSS')>`
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
@@ -74,7 +74,7 @@
 
 **Payload**: `<svg onload=alert('XSS')></svg>`
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
@@ -100,7 +100,7 @@
 
 **Payload**: `<img src=x onerror=alert(document.cookie)>`
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
@@ -126,7 +126,7 @@
 **Expected Result (Secure)**:
 - All sanitized
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
@@ -148,7 +148,7 @@
 
 **Payload**: `<a href="javascript:alert('XSS')">Click</a>`
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
@@ -170,7 +170,7 @@
 **Expected Result (Secure)**:
 - Data URIs blocked or sanitized
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
@@ -190,7 +190,7 @@
 **Expected Result (Secure)**:
 - URL parameters sanitized
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
