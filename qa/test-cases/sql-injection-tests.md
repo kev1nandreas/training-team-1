@@ -27,7 +27,7 @@
 
 **Test Data**: `' OR '1'='1`
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
@@ -52,7 +52,7 @@
 
 **Test Data**: `' UNION SELECT * FROM users--`
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
@@ -79,7 +79,7 @@
 - `' OR 1=1--`
 - `'; --`
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
@@ -103,7 +103,7 @@
 
 **Test Data**: `' OR SLEEP(5)--`
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
 
 ---
 
@@ -127,4 +127,98 @@
 
 **Test Data**: `'`, `''`, `')'`
 
-**Status**: [ ] Pass [ ] Fail [ ] Blocked
+**Status**: [x] Pass [ ] Fail [ ] Blocked
+
+
+---
+
+## Test Case 6: Boolean Injection with Comment
+**Test ID**: SQL-006  
+**Priority**: Critical  
+**Category**: SQL Injection  
+
+**Objective**: Verify that boolean injection with SQL comment is handled safely
+
+**Preconditions**:
+- Application is running
+- User is logged in
+
+**Test Steps**:
+1. Navigate to Dashboard
+2. Enter in search box: `' OR 1=1--`
+3. Click Search button
+
+**Expected Result (Vulnerable)**:
+- All tasks are returned
+- Comment truncates rest of query
+
+**Expected Result (Secure)**:
+- No results or only legitimate matches
+- Payload treated as literal search term
+
+**Test Data**: `' OR 1=1--`
+
+**Status**: [x] Pass [ ] Fail [ ] Blocked
+
+---
+
+## Test Case 7: Destructive SQL Injection (DROP TABLE)
+**Test ID**: SQL-007  
+**Priority**: Critical  
+**Category**: SQL Injection  
+
+**Objective**: Verify that destructive SQL commands cannot be injected
+
+**Preconditions**:
+- Application is running
+- User is logged in
+- Tasks table exists with data
+
+**Test Steps**:
+1. Navigate to Dashboard
+2. Enter in search box: `'; DROP TABLE tasks; --`
+3. Click Search button
+4. Verify tasks table still exists (try loading tasks)
+
+**Expected Result (Vulnerable)**:
+- Tasks table is deleted
+- Subsequent requests fail
+
+**Expected Result (Secure)**:
+- No destructive action occurs
+- Tasks table intact
+- Normal response (empty results or error)
+
+**Test Data**: `'; DROP TABLE tasks; --`
+
+**Status**: [x] Pass [ ] Fail [ ] Blocked
+
+---
+
+## Test Case 8: Boolean Injection Variant
+**Test ID**: SQL-008  
+**Priority**: High  
+**Category**: SQL Injection  
+
+**Objective**: Verify that string-based boolean injection is handled safely
+
+**Preconditions**:
+- Application is running
+- User is logged in
+
+**Test Steps**:
+1. Navigate to Dashboard
+2. Enter in search box: `' OR 'a'='a`
+3. Click Search button
+
+**Expected Result (Vulnerable)**:
+- All tasks are returned
+- Boolean condition always evaluates to true
+
+**Expected Result (Secure)**:
+- No results or only legitimate matches
+- Special characters handled safely
+
+**Test Data**: `' OR 'a'='a`
+
+**Status**: [x] Pass [ ] Fail [ ] Blocked
